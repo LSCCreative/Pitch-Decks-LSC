@@ -114,6 +114,7 @@
 
     // Re-render data-driven tabs on entry.
     if (tab === "approved" && typeof renderApprovedList === "function") renderApprovedList();
+    if (tab === "settings" && typeof initSettingsPanel === "function") initSettingsPanel();
   }
 
   navTabs.forEach((btn) => {
@@ -260,19 +261,55 @@
   // Tracks the pitch currently being edited (null = new pitch).
   appState.editingId = null;
 
+  // --- Filter + sort state for the history log ---
+  appState.tableFilter = { status: "all", type: "all" };
+  appState.tableSort = { key: "title", dir: "asc" };
+
+  function getVisiblePitches() {
+    const { status, type } = appState.tableFilter;
+    let rows = appState.pitches.filter(
+      (p) => (status === "all" || p.status === status) && (type === "all" || p.type === type)
+    );
+    const { key, dir } = appState.tableSort;
+    const factor = dir === "asc" ? 1 : -1;
+    rows = rows.slice().sort((a, b) => {
+      let av = a[key];
+      let bv = b[key];
+      if (key === "value") {
+        av = typeof av === "number" ? av : -Infinity;
+        bv = typeof bv === "number" ? bv : -Infinity;
+        return (av - bv) * factor;
+      }
+      return String(av || "").localeCompare(String(bv || ""), undefined, { sensitivity: "base" }) * factor;
+    });
+    return rows;
+  }
+
+  function updateSortArrows() {
+    document.querySelectorAll("[data-sort-key]").forEach((btn) => {
+      const arrow = btn.querySelector("[data-sort-arrow]");
+      if (!arrow) return;
+      arrow.textContent = btn.getAttribute("data-sort-key") === appState.tableSort.key
+        ? (appState.tableSort.dir === "asc" ? "▲" : "▼")
+        : "";
+    });
+  }
+
   // --- Render the data tracking matrix from appState ---
   function renderPitchTable() {
     if (!tableBody) return;
     appState.openMenuId = null;
+    updateSortArrows();
 
-    if (!appState.pitches.length) {
+    const rows = getVisiblePitches();
+    if (!rows.length) {
       tableBody.innerHTML = "";
       emptyState.classList.remove("hidden");
       return;
     }
     emptyState.classList.add("hidden");
 
-    tableBody.innerHTML = appState.pitches
+    tableBody.innerHTML = rows
       .map(
         (p) => `
         <tr class="border-b border-surface-line/60 transition hover:bg-surface" data-row-id="${p.id}">
@@ -347,6 +384,30 @@
   document.addEventListener("click", () => closeAllMenus());
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeAllMenus();
+  });
+
+  // --- Filter + sort controls ---
+  const filterStatus = document.getElementById("pitch-filter-status");
+  const filterType = document.getElementById("pitch-filter-type");
+  if (filterStatus) filterStatus.addEventListener("change", () => {
+    appState.tableFilter.status = filterStatus.value;
+    renderPitchTable();
+  });
+  if (filterType) filterType.addEventListener("change", () => {
+    appState.tableFilter.type = filterType.value;
+    renderPitchTable();
+  });
+  document.querySelectorAll("[data-sort-key]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const key = btn.getAttribute("data-sort-key");
+      if (appState.tableSort.key === key) {
+        appState.tableSort.dir = appState.tableSort.dir === "asc" ? "desc" : "asc";
+      } else {
+        appState.tableSort.key = key;
+        appState.tableSort.dir = "asc";
+      }
+      renderPitchTable();
+    });
   });
 
   function handleEditPitch(id) {
@@ -1162,6 +1223,119 @@
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !invoiceModal.classList.contains("hidden")) closeInvoiceModal();
   });
+
+  // =====================================================================
+  // SYSTEM SETTINGS CONTROL PANEL
+  // Cover-letter template generator + Google source status monitors.
+  // =====================================================================
+  const DEFAULT_TEMPLATE =
+    "Dear [Client Name],\n\n" +
+    "Thank you for the opportunity to present [Project Title]. " +
+    "We're excited to bring our documentary-style craft to this [Pitch Type] engagement.\n\n" +
+    "Our proposed investment for this body of work is [Project Price], covering the full scope outlined in the attached pitch deck.\n\n" +
+    "We'd love to walk you through the details whenever suits.\n\n" +
+    "Warm regards,\nLSC Creative";
+
+  const SAMPLE_TOKENS = {
+    "[Client Name]": "Northwind Films",
+    "[Project Title]": "Behind the Lens",
+    "[Project Price]": "$48,000",
+    "[Pitch Type]": "Production",
+  };
+
+  function mergeTemplate(text, tokens) {
+    return Object.keys(tokens).reduce(
+      (acc, k) => acc.split(k).join(tokens[k]),
+      text
+    );
+  }
+
+  let settingsInitialized = false;
+  function initSettingsPanel() {
+    const templateArea = document.getElementById("cover-letter-template");
+    const preview = document.getElementById("template-preview");
+    const savedFlag = document.getElementById("template-saved");
+    const saveBtn = document.getElementById("save-template-btn");
+    const tokenPalette = document.getElementById("token-palette");
+
+    if (templateArea && !templateArea.value) {
+      templateArea.value = appState.coverLetterTemplate || DEFAULT_TEMPLATE;
+    }
+    const refreshPreview = () => {
+      if (preview) preview.textContent = mergeTemplate(templateArea.value, SAMPLE_TOKENS);
+    };
+    refreshPreview();
+
+    renderSourceMonitors();
+
+    if (settingsInitialized) return; // bind events only once
+    settingsInitialized = true;
+
+    templateArea.addEventListener("input", refreshPreview);
+
+    // Insert token at cursor when a palette chip is clicked.
+    tokenPalette.addEventListener("click", (e) => {
+      const chip = e.target.closest("[data-token]");
+      if (!chip) return;
+      const token = chip.getAttribute("data-token");
+      const start = templateArea.selectionStart ?? templateArea.value.length;
+      const end = templateArea.selectionEnd ?? templateArea.value.length;
+      templateArea.value = templateArea.value.slice(0, start) + token + templateArea.value.slice(end);
+      const caret = start + token.length;
+      templateArea.focus();
+      templateArea.setSelectionRange(caret, caret);
+      refreshPreview();
+    });
+
+    saveBtn.addEventListener("click", () => {
+      appState.coverLetterTemplate = templateArea.value;
+      console.log("[settings] cover letter template saved", appState.coverLetterTemplate.length, "chars");
+      savedFlag.classList.remove("hidden");
+      setTimeout(() => savedFlag.classList.add("hidden"), 1600);
+    });
+
+    document.getElementById("recheck-sources-btn").addEventListener("click", () => {
+      console.log("[settings] re-checking Google source connections…");
+      renderSourceMonitors(true);
+    });
+  }
+
+  // Connection monitors verify the configured Google sources.
+  function renderSourceMonitors(forceCheck) {
+    const wrap = document.getElementById("source-monitors");
+    if (!wrap) return;
+
+    // A source is "connected" only when the backend endpoint is configured.
+    const connected = !!GOOGLE_SCRIPT_URL;
+    const sources = [
+      { name: "Google Sheets — Dropdown values", detail: "Config tab (services / deliverables)" },
+      { name: "Google Drive — Pitch JSON folder", detail: "Stores <id>.json configuration files" },
+      { name: "Google Drive — Export folder", detail: "Generated invoices & assets" },
+    ];
+
+    wrap.innerHTML = sources
+      .map((s) => {
+        const ok = connected;
+        const dot = ok ? "bg-sage" : "bg-orange-400";
+        const label = ok ? "Connected" : "Not configured";
+        const labelColor = ok ? "text-sage" : "text-orange-400";
+        return `
+          <div class="flex items-center justify-between gap-4 rounded-xl border border-surface-line bg-surface px-4 py-3">
+            <div>
+              <p class="text-sm font-medium text-ink">${escapeHtml(s.name)}</p>
+              <p class="font-mono text-xs text-ink-muted">${escapeHtml(s.detail)}</p>
+            </div>
+            <span class="inline-flex items-center gap-2 text-xs font-semibold ${labelColor}">
+              <span class="h-2 w-2 rounded-full ${dot}"></span>${label}
+            </span>
+          </div>`;
+      })
+      .join("");
+
+    if (forceCheck) {
+      console.log("[settings] source status:", connected ? "all connected" : "endpoint not set (GOOGLE_SCRIPT_URL empty)");
+    }
+  }
 
   // =====================================================================
   // ROUTER + BOOT
