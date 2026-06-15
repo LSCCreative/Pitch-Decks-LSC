@@ -147,6 +147,11 @@
             <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07L11.5 4.5"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07L12.5 19.5"/></svg>
             Published Pitches
           </button>
+          <button data-tab="clients"
+            class="nav-tab focus-sage flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-ink-muted transition hover:bg-surface hover:text-ink">
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            CRM
+          </button>
           <button data-tab="settings"
             class="nav-tab focus-sage flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-ink-muted transition hover:bg-surface hover:text-ink">
             <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-2.82 1.17V21a2 2 0 11-4 0v-.09A1.65 1.65 0 007 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 14a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 7a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.36.14.65.42.79.79z"/></svg>
@@ -289,6 +294,54 @@
             </div>
             <div id="published-empty" class="hidden rounded-xl border border-surface-line bg-surface-raised px-5 py-12 text-center">
               <p class="text-sm text-ink-muted">Nothing published yet. Open a pitch's ⋯ menu and choose “Publish” to generate a client link.</p>
+            </div>
+          </section>
+
+          <!-- CRM (Clients) panel -->
+          <section data-panel="clients" class="panel hidden space-y-6">
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+
+              <!-- Add New Client form -->
+              <div class="glass-panel rounded-xl p-6">
+                <h3 class="font-display text-lg font-bold">Add New Client</h3>
+                <p class="mt-0.5 text-sm text-ink-muted">Capture a client profile to reuse across pitch decks.</p>
+                <form id="client-form" class="mt-4 space-y-4" autocomplete="off">
+                  <div>
+                    <label class="mb-1.5 block text-sm font-medium text-ink">Business Name</label>
+                    <input type="text" name="business" required placeholder="e.g. Northwind Films"
+                      class="focus-sage w-full rounded-xl border border-surface-line bg-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted/70 transition hover:border-sage focus:border-sage" />
+                  </div>
+                  <div>
+                    <label class="mb-1.5 block text-sm font-medium text-ink">Contact Person Name</label>
+                    <input type="text" name="contact" placeholder="e.g. Dana Wells"
+                      class="focus-sage w-full rounded-xl border border-surface-line bg-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted/70 transition hover:border-sage focus:border-sage" />
+                  </div>
+                  <div>
+                    <label class="mb-1.5 block text-sm font-medium text-ink">Email</label>
+                    <input type="email" name="email" placeholder="name@studio.com"
+                      class="focus-sage w-full rounded-xl border border-surface-line bg-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted/70 transition hover:border-sage focus:border-sage" />
+                  </div>
+                  <div>
+                    <label class="mb-1.5 block text-sm font-medium text-ink">Phone Number</label>
+                    <input type="tel" name="phone" placeholder="+61 400 000 000"
+                      class="focus-sage w-full rounded-xl border border-surface-line bg-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted/70 transition hover:border-sage focus:border-sage" />
+                  </div>
+                  <button type="submit"
+                    class="focus-sage w-full rounded-xl bg-terracotta px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-terracotta-hover active:scale-[.99]">Add client</button>
+                </form>
+              </div>
+
+              <!-- Existing clients table -->
+              <div class="rounded-xl border border-surface-line bg-surface-raised p-6">
+                <h3 class="font-display text-lg font-bold">Client Directory</h3>
+                <p class="mt-0.5 text-sm text-ink-muted">Profiles available to bind into new pitch decks.</p>
+                <div id="client-table" class="mt-4 space-y-3">
+                  <!-- Client cards rendered dynamically by app.js -->
+                </div>
+                <div id="client-empty" class="hidden rounded-xl border border-surface-line bg-surface px-5 py-10 text-center">
+                  <p class="text-sm text-ink-muted">No clients yet. Add your first client to get started.</p>
+                </div>
+              </div>
             </div>
           </section>
 

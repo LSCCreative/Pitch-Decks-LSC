@@ -24,6 +24,7 @@
     dashboard: { title: "Dashboard", subtitle: "Your documentary pipeline at a glance" },
     approved: { title: "Approved Pitches", subtitle: "Concepts greenlit for production" },
     published: { title: "Published Pitches", subtitle: "Live client portal links ready to share" },
+    clients: { title: "CRM", subtitle: "Manage client relationships and contact profiles" },
     settings: { title: "Settings", subtitle: "Manage your studio profile and preferences" },
   };
 
@@ -116,6 +117,7 @@
     // Re-render data-driven tabs on entry.
     if (tab === "approved" && typeof renderApprovedList === "function") renderApprovedList();
     if (tab === "published" && typeof renderPublishedList === "function") renderPublishedList();
+    if (tab === "clients" && typeof renderClientTable === "function") renderClientTable();
     if (tab === "settings" && typeof initSettingsPanel === "function") initSettingsPanel();
   }
 
@@ -131,6 +133,10 @@
   // =====================================================================
   const appState = {
     pitches: [],
+    clients: [
+      { id: "c-1", business: "Northwind Films", contact: "Dana Wells", email: "dana@northwindfilms.com", phone: "+61 400 111 222" },
+      { id: "c-2", business: "Halcyon Media", contact: "Marcus Lee", email: "marcus@halcyonmedia.co", phone: "+61 400 333 444" },
+    ],
     dashboardMode: "list", // "list" | "create"
     createType: null,       // "Production" | "Retainer"
     openMenuId: null,       // id of the row whose action menu is open
@@ -532,6 +538,153 @@
     wrap.appendChild(row);
   }
 
+  // ---- Image helpers (data-URL encoding so images persist in the payload) ----
+  function fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ---- 1. Top Banner Image (start of form) ----
+  function bannerSection(pitch) {
+    const existing = pitch && has(pitch.banner) ? pitch.banner : "";
+    return `
+      <h4 class="font-display text-base font-bold">Top Banner Image</h4>
+      <p class="mt-0.5 text-xs text-ink-muted">Cinematic hero image shown full-bleed at the top of the client pitch.</p>
+      <div id="banner-dropzone" data-banner-zone
+        class="focus-sage mt-3 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-surface-line bg-surface/50 p-6 text-center transition hover:border-sage">
+        <input type="file" accept="image/*" data-banner-input class="hidden" />
+        <img data-banner-preview src="${escapeHtml(existing)}" alt="Banner preview" class="${existing ? "" : "hidden"} max-h-40 w-full rounded-lg object-cover" />
+        <div data-banner-placeholder class="${existing ? "hidden" : ""} flex flex-col items-center gap-1 text-ink-muted">
+          <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+          <span class="text-sm">Click or drop an image to upload</span>
+        </div>
+      </div>
+      <button type="button" data-banner-clear class="${existing ? "" : "hidden"} focus-sage mt-2 text-xs text-ink-muted transition hover:text-terracotta">Remove banner</button>`;
+  }
+
+  // ---- 2. Production Breakdown module ----
+  function breakdownSection() {
+    return `
+      <h4 class="mt-8 font-display text-base font-bold">Production Breakdown</h4>
+      <p class="mt-0.5 text-xs text-ink-muted">Itemise the phases of work for this project.</p>
+      <div id="breakdown-list" class="mt-4 space-y-3"></div>
+      <button type="button" id="add-breakdown"
+        class="focus-sage mt-4 inline-flex items-center gap-2 rounded-xl border border-dashed border-sage/50 px-4 py-2.5 text-sm font-semibold text-sage transition hover:bg-sage/10">
+        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        Production Module
+      </button>`;
+  }
+
+  const BREAKDOWN_PHASES = ["Pre-production", "Production", "Post-production"];
+  function appendBreakdownRow(phase, description) {
+    const wrap = document.getElementById("breakdown-list");
+    if (!wrap) return;
+    const row = document.createElement("div");
+    row.className = "rounded-xl border border-surface-line bg-surface/50 p-3";
+    row.innerHTML = `
+      <div class="flex items-start gap-3">
+        <div class="flex-1 space-y-2">
+          <select data-breakdown-phase class="${inputClass}">
+            ${BREAKDOWN_PHASES.map((p) => `<option ${p === phase ? "selected" : ""}>${p}</option>`).join("")}
+          </select>
+          <textarea data-breakdown-desc rows="2" placeholder="Describe the work in this phase…" class="${inputClass}">${escapeHtml(description || "")}</textarea>
+        </div>
+        <button type="button" data-remove-breakdown
+          class="focus-sage mt-0.5 h-[42px] shrink-0 rounded-xl border border-surface-line px-3 text-sm text-ink-muted transition hover:border-terracotta hover:text-terracotta">Remove</button>
+      </div>`;
+    row.querySelector("[data-remove-breakdown]").addEventListener("click", () => row.remove());
+    wrap.appendChild(row);
+  }
+
+  // ---- 3. Interactive Project Storyboard ----
+  function storyboardSection() {
+    return `
+      <h4 class="mt-8 font-display text-base font-bold">Project Storyboard</h4>
+      <p class="mt-0.5 text-xs text-ink-muted">Build scenes with first-frame images and frame descriptions.</p>
+      <div id="storyboard-list" class="mt-4 space-y-4"></div>
+      <button type="button" id="add-scene"
+        class="focus-sage mt-4 inline-flex items-center gap-2 rounded-xl border border-dashed border-sage/50 px-4 py-2.5 text-sm font-semibold text-sage transition hover:bg-sage/10">
+        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        Add Scene
+      </button>`;
+  }
+
+  // Append a frame (image dropzone + description) inside a scene's frame list.
+  function appendFrame(framesWrap, frame) {
+    const existing = frame && has(frame.image) ? frame.image : "";
+    const row = document.createElement("div");
+    row.className = "rounded-xl border border-surface-line bg-surface/40 p-3";
+    row.innerHTML = `
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-[140px_1fr_auto] sm:items-start">
+        <div data-frame-zone
+          class="focus-sage flex h-[92px] cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-dashed border-surface-line bg-surface/60 text-center transition hover:border-sage">
+          <input type="file" accept="image/*" data-frame-input class="hidden" />
+          <img data-frame-preview src="${escapeHtml(existing)}" alt="Frame" class="${existing ? "" : "hidden"} h-full w-full object-cover" />
+          <span data-frame-placeholder class="${existing ? "hidden" : ""} px-2 text-[11px] text-ink-muted">Drop / click image</span>
+        </div>
+        <textarea data-frame-desc rows="3" placeholder="Frame description…" class="${inputClass}">${escapeHtml((frame && frame.description) || "")}</textarea>
+        <button type="button" data-remove-frame
+          class="focus-sage h-[42px] shrink-0 rounded-xl border border-surface-line px-3 text-sm text-ink-muted transition hover:border-terracotta hover:text-terracotta">Remove</button>
+      </div>`;
+    const input = row.querySelector("[data-frame-input]");
+    input._dataUrl = existing || "";
+    wireImageZone(row.querySelector("[data-frame-zone]"), input, row.querySelector("[data-frame-preview]"), row.querySelector("[data-frame-placeholder]"));
+    row.querySelector("[data-remove-frame]").addEventListener("click", () => row.remove());
+    framesWrap.appendChild(row);
+  }
+
+  function appendScene(title, frames) {
+    const wrap = document.getElementById("storyboard-list");
+    if (!wrap) return;
+    const card = document.createElement("div");
+    card.className = "rounded-xl border border-surface-line bg-surface/50 p-4";
+    card.innerHTML = `
+      <div class="flex items-center gap-3">
+        <input type="text" data-scene-title value="${escapeHtml(title || "")}" placeholder="Scene title — e.g. Opening montage" class="${inputClass}" />
+        <button type="button" data-remove-scene
+          class="focus-sage h-[42px] shrink-0 rounded-xl border border-surface-line px-3 text-sm text-ink-muted transition hover:border-terracotta hover:text-terracotta">Remove scene</button>
+      </div>
+      <div data-scene-frames class="mt-3 space-y-3"></div>
+      <button type="button" data-add-frame
+        class="focus-sage mt-3 inline-flex items-center gap-2 rounded-lg border border-dashed border-sage/40 px-3 py-2 text-xs font-semibold text-sage transition hover:bg-sage/10">
+        <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        Add another storyboard image
+      </button>`;
+    const framesWrap = card.querySelector("[data-scene-frames]");
+    card.querySelector("[data-remove-scene]").addEventListener("click", () => card.remove());
+    card.querySelector("[data-add-frame]").addEventListener("click", () => appendFrame(framesWrap, null));
+    const initial = Array.isArray(frames) && frames.length ? frames : [null]; // every scene starts with one frame
+    initial.forEach((f) => appendFrame(framesWrap, f));
+    wrap.appendChild(card);
+  }
+
+  // Wire a click/drag-drop image zone → reads to data URL, previews, stashes on input._dataUrl.
+  function wireImageZone(zone, input, preview, placeholder) {
+    const show = (dataUrl) => {
+      input._dataUrl = dataUrl;
+      preview.src = dataUrl;
+      preview.classList.remove("hidden");
+      if (placeholder) placeholder.classList.add("hidden");
+    };
+    const handleFile = async (file) => {
+      if (!file || !file.type.startsWith("image/")) return;
+      show(await fileToDataUrl(file));
+    };
+    zone.addEventListener("click", () => input.click());
+    input.addEventListener("change", () => handleFile(input.files[0]));
+    zone.addEventListener("dragover", (e) => { e.preventDefault(); zone.classList.add("border-sage"); });
+    zone.addEventListener("dragleave", () => zone.classList.remove("border-sage"));
+    zone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      zone.classList.remove("border-sage");
+      handleFile(e.dataTransfer.files[0]);
+    });
+  }
+
   function productionFormHtml(pitch) {
     return `
       <form id="pitch-form" data-form-type="Production" class="glass-panel rounded-xl p-6 sm:p-8">
@@ -541,6 +694,9 @@
           <p class="text-sm font-semibold text-terracotta">PDF files only accepted</p>
         </div>
 
+        ${bannerSection(pitch)}
+        <div class="my-6 border-t border-surface-line"></div>
+
         <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
           <div class="md:col-span-2">
             <label class="${labelClass}">Pitch title</label>
@@ -548,7 +704,11 @@
           </div>
           <div>
             <label class="${labelClass}">Client</label>
-            <input type="text" name="client" value="${escapeHtml(pitch?.client || "")}" placeholder="Client / studio name" class="${inputClass}" />
+            <select name="clientId" data-client-select class="${inputClass}">
+              ${clientSelectOptions(resolveClientId(pitch))}
+            </select>
+            <p class="mt-1 text-xs text-ink-muted">Manage clients in the <span class="text-sage">CRM</span> tab.</p>
+            <div data-client-preview class="mt-2 hidden rounded-xl border border-surface-line bg-surface/60 p-3 text-xs text-ink-muted"></div>
           </div>
           <div>
             <label class="${labelClass}">Estimated value ($)</label>
@@ -575,6 +735,10 @@
           Add custom pre-production document
         </button>
 
+        ${breakdownSection()}
+
+        ${storyboardSection()}
+
         ${deliverablesSection()}
 
         ${formFooter()}
@@ -589,6 +753,9 @@
           <p class="text-sm text-ink">Prepaid retainers refer to upfront payments made to a service provider to secure their availability, buy a block of hours, or guarantee ongoing product deliveries.</p>
         </div>
 
+        ${bannerSection(pitch)}
+        <div class="my-6 border-t border-surface-line"></div>
+
         <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
           <div class="md:col-span-2">
             <label class="${labelClass}">Pitch title</label>
@@ -596,7 +763,11 @@
           </div>
           <div>
             <label class="${labelClass}">Client</label>
-            <input type="text" name="client" value="${escapeHtml(pitch?.client || "")}" placeholder="Client / studio name" class="${inputClass}" />
+            <select name="clientId" data-client-select class="${inputClass}">
+              ${clientSelectOptions(resolveClientId(pitch))}
+            </select>
+            <p class="mt-1 text-xs text-ink-muted">Manage clients in the <span class="text-sage">CRM</span> tab.</p>
+            <div data-client-preview class="mt-2 hidden rounded-xl border border-surface-line bg-surface/60 p-3 text-xs text-ink-muted"></div>
           </div>
           <div>
             <label class="${labelClass}">Package value ($)</label>
@@ -636,6 +807,10 @@
             <input type="date" id="bulk-delivery-date" name="bulkDeliveryDate" value="${escapeHtml(pitch?.bulkDeliveryDate || "")}" class="${inputClass} max-w-xs" />
           </div>
         </div>
+
+        ${breakdownSection()}
+
+        ${storyboardSection()}
 
         ${deliverablesSection()}
 
@@ -695,10 +870,59 @@
       toggle.addEventListener("change", () => wrap.classList.toggle("hidden", !toggle.checked));
     }
 
+    // Top banner image zone (shared): wire dropzone + clear, prefill preview when editing.
+    const bannerInput = form.querySelector("[data-banner-input]");
+    const bannerZone = form.querySelector("[data-banner-zone]");
+    const bannerPreview = form.querySelector("[data-banner-preview]");
+    const bannerPlaceholder = form.querySelector("[data-banner-placeholder]");
+    const bannerClear = form.querySelector("[data-banner-clear]");
+    bannerInput._dataUrl = (pitch && has(pitch.banner)) ? pitch.banner : "";
+    wireImageZone(bannerZone, bannerInput, bannerPreview, bannerPlaceholder);
+    const refreshBannerClear = () => bannerClear.classList.toggle("hidden", !bannerInput._dataUrl);
+    bannerInput.addEventListener("change", () => setTimeout(refreshBannerClear, 0));
+    bannerZone.addEventListener("drop", () => setTimeout(refreshBannerClear, 0));
+    bannerClear.addEventListener("click", () => {
+      bannerInput._dataUrl = "";
+      bannerInput.value = "";
+      bannerPreview.src = "";
+      bannerPreview.classList.add("hidden");
+      bannerPlaceholder.classList.remove("hidden");
+      bannerClear.classList.add("hidden");
+    });
+
+    // Production Breakdown: prefill + wire add button.
+    document.getElementById("add-breakdown").addEventListener("click", () => appendBreakdownRow("Pre-production", ""));
+    const existingBreakdown = (pitch && Array.isArray(pitch.breakdown)) ? pitch.breakdown : [];
+    existingBreakdown.forEach((b) => appendBreakdownRow(b.phase, b.description));
+
+    // Project Storyboard: prefill scenes + wire add button.
+    document.getElementById("add-scene").addEventListener("click", () => appendScene("", null));
+    const existingScenes = (pitch && Array.isArray(pitch.storyboard)) ? pitch.storyboard : [];
+    existingScenes.forEach((s) => appendScene(s.title, s.frames));
+
     // Deliverables (shared by both modules): prefill when editing + wire add button.
     document.getElementById("add-deliverable").addEventListener("click", () => appendDeliverable("", ""));
     const existingDeliverables = (pitch && Array.isArray(pitch.deliverables)) ? pitch.deliverables : [];
     existingDeliverables.forEach((d) => appendDeliverable(d.title, d.description));
+
+    // CRM client dropdown: instantly preview the bound contact details on select.
+    const clientSelect = form.querySelector("[data-client-select]");
+    const clientPreview = form.querySelector("[data-client-preview]");
+    const syncClientPreview = () => {
+      const c = appState.clients.find((x) => x.id === clientSelect.value);
+      if (!c) {
+        clientPreview.classList.add("hidden");
+        clientPreview.innerHTML = "";
+        return;
+      }
+      clientPreview.classList.remove("hidden");
+      clientPreview.innerHTML =
+        `<span class="text-ink">${escapeHtml(c.contact || "—")}</span> · ` +
+        `${escapeHtml(c.email || "—")} · ${escapeHtml(c.phone || "—")}`;
+      console.log("[crm] bound client to pitch payload →", c.business);
+    };
+    clientSelect.addEventListener("change", syncClientPreview);
+    syncClientPreview(); // reflect any prefilled selection when editing
   }
 
   // Collect form values, map to appState, persist, return to ledger.
@@ -708,17 +932,51 @@
       ? appState.pitches.find((p) => p.id === appState.editingId)
       : null;
 
+    // Resolve the selected CRM client and bind their full profile into the payload.
+    const clientId = (fd.get("clientId") || "").toString();
+    const clientRecord = appState.clients.find((c) => c.id === clientId) || null;
+
     const pitch = {
       id: existing ? existing.id : "p-" + Date.now(),
       type,
       title: (fd.get("title") || "").toString().trim() || "Untitled Pitch",
-      client: (fd.get("client") || "").toString().trim() || "—",
+      // Client binding from CRM (falls back to any pre-existing string client).
+      clientId: clientRecord ? clientRecord.id : null,
+      client: clientRecord ? clientRecord.business : (existing && existing.client) || "—",
+      clientContact: clientRecord ? clientRecord.contact : (existing && existing.clientContact) || "",
+      clientEmail: clientRecord ? clientRecord.email : (existing && existing.clientEmail) || "",
+      clientPhone: clientRecord ? clientRecord.phone : (existing && existing.clientPhone) || "",
       value: fd.get("value") ? Number(fd.get("value")) : null,
       status: existing ? existing.status : "Draft",
       // Preserve publish state across edits.
       published: existing ? !!existing.published : false,
       publishedAt: existing ? existing.publishedAt || null : null,
     };
+
+    // Top banner image (data URL, empty string if none).
+    const bannerInput = form.querySelector("[data-banner-input]");
+    pitch.banner = (bannerInput && bannerInput._dataUrl) ? bannerInput._dataUrl : "";
+
+    // Production breakdown rows.
+    pitch.breakdown = Array.from(form.querySelectorAll("#breakdown-list > div"))
+      .map((row) => ({
+        phase: row.querySelector("[data-breakdown-phase]").value,
+        description: row.querySelector("[data-breakdown-desc]").value.trim(),
+      }))
+      .filter((b) => b.description);
+
+    // Storyboard scenes → frames (image data URL + description).
+    pitch.storyboard = Array.from(form.querySelectorAll("#storyboard-list > div"))
+      .map((card) => ({
+        title: card.querySelector("[data-scene-title]").value.trim(),
+        frames: Array.from(card.querySelectorAll("[data-scene-frames] > div"))
+          .map((fr) => ({
+            image: fr.querySelector("[data-frame-input]")._dataUrl || "",
+            description: fr.querySelector("[data-frame-desc]").value.trim(),
+          }))
+          .filter((f) => f.image || f.description),
+      }))
+      .filter((s) => s.title || s.frames.length);
 
     // Itemised deliverables (shared by both modules): title + description.
     pitch.deliverables = Array.from(form.querySelectorAll("#deliverables-list > div"))
@@ -910,6 +1168,63 @@
           .join("")}</div>`
       : "";
 
+    // Top banner image — full-bleed cinematic asset (collapses if none).
+    const topBannerHtml = has(pitch.banner)
+      ? `<div class="w-full overflow-hidden border-b border-surface-line">
+           <img src="${escapeHtml(pitch.banner)}" alt="${escapeHtml(pitch.title)}" class="h-64 w-full object-cover sm:h-80 lg:h-96" />
+         </div>`
+      : "";
+
+    // Production breakdown — itemised phase layout (collapses if none).
+    const breakdown = Array.isArray(pitch.breakdown) ? pitch.breakdown.filter((b) => has(b.description)) : [];
+    const breakdownClientHtml = breakdown.length
+      ? `<div class="space-y-3">${breakdown
+          .map(
+            (b) => `
+          <div class="flex flex-col gap-1 rounded-xl border border-surface-line bg-surface-raised p-5 sm:flex-row sm:gap-5">
+            <p class="shrink-0 font-mono text-xs font-semibold uppercase tracking-wide text-sage sm:w-40">${escapeHtml(b.phase || "Phase")}</p>
+            <p class="text-sm leading-relaxed text-ink/90">${escapeHtml(b.description)}</p>
+          </div>`
+          )
+          .join("")}</div>`
+      : "";
+
+    // Project storyboard — expandable accordion (collapses if none).
+    const scenes = Array.isArray(pitch.storyboard)
+      ? pitch.storyboard.filter((s) => has(s.title) || (Array.isArray(s.frames) && s.frames.some((f) => has(f.image) || has(f.description))))
+      : [];
+    const storyboardClientHtml = scenes.length
+      ? `<div class="overflow-hidden rounded-xl border border-surface-line bg-surface-raised">
+          <button type="button" data-storyboard-toggle aria-expanded="false"
+            class="focus-sage flex w-full items-center justify-between gap-4 px-5 py-4 text-left">
+            <span class="font-display text-base font-bold text-ink">Project Storyboard</span>
+            <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 text-ink-muted transition-transform" data-storyboard-chevron fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div data-storyboard-body class="hidden border-t border-surface-line px-5 py-4 space-y-5">
+            ${scenes
+              .map(
+                (s) => `
+              <div>
+                ${has(s.title) ? `<p class="font-display text-base font-bold text-ink">${escapeHtml(s.title)}</p>` : ""}
+                <div class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  ${(s.frames || [])
+                    .filter((f) => has(f.image) || has(f.description))
+                    .map(
+                      (f) => `
+                    <div class="rounded-xl border border-surface-line bg-surface p-3">
+                      ${has(f.image) ? `<img src="${escapeHtml(f.image)}" alt="Storyboard frame" class="mb-2 h-36 w-full rounded-lg object-cover" />` : ""}
+                      ${has(f.description) ? `<p class="text-sm leading-relaxed text-ink-muted">${escapeHtml(f.description)}</p>` : ""}
+                    </div>`
+                    )
+                    .join("")}
+                </div>
+              </div>`
+              )
+              .join("")}
+          </div>
+        </div>`
+      : "";
+
     const retainerBannerHtml = isRetainer
       ? `<div class="mb-10 rounded-xl border border-sage/40 bg-sage/10 px-5 py-4">
            <p class="text-sm leading-relaxed text-ink">${RETAINER_BANNER}</p>
@@ -924,6 +1239,7 @@
       : "";
 
     clientView.innerHTML = `
+      ${topBannerHtml}
       <article class="mx-auto max-w-3xl px-6 py-16 sm:py-20">
         <!-- Masthead -->
         <header>
@@ -941,6 +1257,8 @@
 
         ${clientSection("Overview", introHtml)}
         ${clientSection(isRetainer ? "Retainer terms" : "Production details", factsHtml)}
+        ${clientSection("Production Breakdown", breakdownClientHtml)}
+        ${storyboardClientHtml ? `<section class="border-t border-surface-line py-10">${storyboardClientHtml}</section>` : ""}
         ${clientSection("Deliverables", deliverablesClientHtml)}
         ${clientSection("Documents", docsHtml)}
 
@@ -1024,6 +1342,16 @@
     if (docBtn) {
       const idx = Number(docBtn.getAttribute("data-doc-index"));
       if (clientDocRegistry[idx]) openPdfModal(clientDocRegistry[idx]);
+      return;
+    }
+    // Project Storyboard accordion toggle.
+    const sbToggle = e.target.closest("[data-storyboard-toggle]");
+    if (sbToggle) {
+      const body = sbToggle.parentElement.querySelector("[data-storyboard-body]");
+      const chevron = sbToggle.querySelector("[data-storyboard-chevron]");
+      const open = body.classList.toggle("hidden");
+      sbToggle.setAttribute("aria-expanded", String(!open));
+      chevron.classList.toggle("rotate-180", !open);
     }
   });
 
@@ -1243,6 +1571,88 @@
         setTimeout(() => (copyBtn.textContent = prev), 1400);
       }
     });
+  }
+
+  // =====================================================================
+  // CRM — CLIENT RELATIONSHIP MANAGEMENT
+  // =====================================================================
+  const clientForm = document.getElementById("client-form");
+  const clientTable = document.getElementById("client-table");
+  const clientEmpty = document.getElementById("client-empty");
+
+  function renderClientTable() {
+    if (!clientTable) return;
+    if (!appState.clients.length) {
+      clientTable.innerHTML = "";
+      clientEmpty.classList.remove("hidden");
+      return;
+    }
+    clientEmpty.classList.add("hidden");
+
+    clientTable.innerHTML = appState.clients
+      .map(
+        (c) => `
+        <div class="rounded-xl border border-surface-line bg-surface p-4">
+          <div class="flex items-start justify-between gap-3">
+            <p class="font-display text-base font-bold text-ink">${escapeHtml(c.business)}</p>
+            <span class="font-mono text-xs uppercase tracking-wide text-ink-muted">Client</span>
+          </div>
+          <dl class="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+            <div><dt class="font-mono text-xs uppercase tracking-wide text-ink-muted">Contact</dt><dd class="text-ink">${escapeHtml(c.contact || "—")}</dd></div>
+            <div><dt class="font-mono text-xs uppercase tracking-wide text-ink-muted">Phone</dt><dd class="text-ink">${escapeHtml(c.phone || "—")}</dd></div>
+            <div class="sm:col-span-2"><dt class="font-mono text-xs uppercase tracking-wide text-ink-muted">Email</dt><dd class="text-ink">${escapeHtml(c.email || "—")}</dd></div>
+          </dl>
+        </div>`
+      )
+      .join("");
+  }
+
+  if (clientForm) {
+    clientForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const fd = new FormData(clientForm);
+      const business = (fd.get("business") || "").toString().trim();
+      if (!business) return;
+      const client = {
+        id: "c-" + Date.now(),
+        business,
+        contact: (fd.get("contact") || "").toString().trim(),
+        email: (fd.get("email") || "").toString().trim(),
+        phone: (fd.get("phone") || "").toString().trim(),
+      };
+      appState.clients.push(client);
+      console.log("[crm] client added →", client);
+      clientForm.reset();
+      renderClientTable();
+      refreshClientSelect(); // keep any open pitch form in sync
+    });
+  }
+
+  // Resolve a pitch's client to a CRM id: explicit clientId, else match by business name.
+  function resolveClientId(pitch) {
+    if (!pitch) return "";
+    if (pitch.clientId) return pitch.clientId;
+    const match = appState.clients.find((c) => c.business === pitch.client);
+    return match ? match.id : "";
+  }
+
+  // Build <option> markup for a client <select>, optionally pre-selected.
+  function clientSelectOptions(selectedId) {
+    const opts = ['<option value="">Select a client…</option>'];
+    appState.clients.forEach((c) => {
+      const sel = c.id === selectedId ? "selected" : "";
+      opts.push(`<option value="${escapeHtml(c.id)}" ${sel}>${escapeHtml(c.business)}</option>`);
+    });
+    return opts.join("");
+  }
+
+  // Refresh a live pitch form's client dropdown after a CRM change.
+  function refreshClientSelect() {
+    const sel = document.querySelector("#pitch-form [data-client-select]");
+    if (sel) {
+      const current = sel.value;
+      sel.innerHTML = clientSelectOptions(current);
+    }
   }
 
   // --- Invoicing export modal ---
