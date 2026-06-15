@@ -23,6 +23,7 @@
   const TAB_META = {
     dashboard: { title: "Dashboard", subtitle: "Your documentary pipeline at a glance" },
     approved: { title: "Approved Pitches", subtitle: "Concepts greenlit for production" },
+    published: { title: "Published Pitches", subtitle: "Live client portal links ready to share" },
     settings: { title: "Settings", subtitle: "Manage your studio profile and preferences" },
   };
 
@@ -114,6 +115,7 @@
 
     // Re-render data-driven tabs on entry.
     if (tab === "approved" && typeof renderApprovedList === "function") renderApprovedList();
+    if (tab === "published" && typeof renderPublishedList === "function") renderPublishedList();
     if (tab === "settings" && typeof initSettingsPanel === "function") initSettingsPanel();
   }
 
@@ -153,6 +155,12 @@
         { label: "Key Production Equipment", fileName: "equipment-list.pdf", url: null },
       ],
       customDocuments: [{ label: "Location Release", fileName: "location-release.pdf", url: null }],
+      deliverables: [
+        { title: "Final 4K master film", description: "Fully graded and sound-mixed feature export, delivered in 4K ProRes and H.264." },
+        { title: "Three social cut-downs", description: "60s, 30s and 15s vertical edits for Instagram, TikTok and YouTube Shorts." },
+      ],
+      published: true,
+      publishedAt: "2026-06-01T00:00:00.000Z",
     },
     {
       id: "p-1002",
@@ -328,6 +336,8 @@
                 class="absolute right-0 z-20 mt-1 hidden w-44 overflow-hidden rounded-lg border border-surface-line bg-surface-raised shadow-xl">
                 <button data-action="edit" data-id="${p.id}"
                   class="block w-full px-4 py-2.5 text-left text-sm text-ink transition hover:bg-surface hover:text-sage">Edit Pitch Deck</button>
+                <button data-action="publish" data-id="${p.id}"
+                  class="block w-full px-4 py-2.5 text-left text-sm text-ink transition hover:bg-surface hover:text-sage">${p.published ? "Copy client link" : "Publish"}</button>
                 <button data-action="delete" data-id="${p.id}"
                   class="block w-full px-4 py-2.5 text-left text-sm text-ink transition hover:bg-surface hover:text-terracotta">Delete</button>
               </div>
@@ -370,8 +380,11 @@
       if (action) {
         e.stopPropagation();
         const id = action.getAttribute("data-id");
-        if (action.getAttribute("data-action") === "edit") {
+        const act = action.getAttribute("data-action");
+        if (act === "edit") {
           handleEditPitch(id);
+        } else if (act === "publish") {
+          handlePublishPitch(id);
         } else {
           handleDeletePitch(id);
         }
@@ -422,6 +435,47 @@
     renderPitchTable();
   }
 
+  // Absolute client-portal URL for a pitch.
+  function clientUrlFor(pitch) {
+    const base = window.location.origin + window.location.pathname;
+    return `${base}?view=client&id=${encodeURIComponent(pitch.id)}`;
+  }
+
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); } catch (e2) {}
+      document.body.removeChild(ta);
+      return true;
+    }
+  }
+
+  // Publish: flag the pitch live (status unchanged) and surface the client link.
+  async function handlePublishPitch(id) {
+    const pitch = appState.pitches.find((p) => p.id === id);
+    if (!pitch) return;
+    const link = clientUrlFor(pitch);
+
+    if (!pitch.published) {
+      pitch.published = true;
+      pitch.publishedAt = new Date().toISOString();
+      console.log("[publish] pitch published →", id, link);
+      await savePitchToStorage(pitch);
+      renderPitchTable();
+    }
+    await copyText(link);
+    // Jump to the Published tab so the user sees the live link + copy control.
+    activateTab("published");
+  }
+
   // =====================================================================
   // CREATION FORM MODULES (injected into #create-canvas)
   // =====================================================================
@@ -445,6 +499,37 @@
         <input type="file" accept=".pdf,application/pdf" data-pdf-label="${escapeHtml(label)}"
           class="${inputClass} file:mr-3 file:rounded-lg file:border-0 file:bg-surface-line file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-ink hover:file:bg-sage/30" />
       </div>`;
+  }
+
+  // Shared itemised deliverables block (title + description rows).
+  function deliverablesSection() {
+    return `
+      <h4 class="mt-8 font-display text-base font-bold">Deliverables</h4>
+      <p class="mt-0.5 text-xs text-ink-muted">Itemise exactly what the client receives. Each line shows on the client portal.</p>
+      <div id="deliverables-list" class="mt-4 space-y-3"></div>
+      <button type="button" id="add-deliverable"
+        class="focus-sage mt-4 inline-flex items-center gap-2 rounded-xl border border-dashed border-sage/50 px-4 py-2.5 text-sm font-semibold text-sage transition hover:bg-sage/10">
+        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        Add deliverable
+      </button>`;
+  }
+
+  function appendDeliverable(title, desc) {
+    const wrap = document.getElementById("deliverables-list");
+    if (!wrap) return;
+    const row = document.createElement("div");
+    row.className = "rounded-xl border border-surface-line bg-surface/50 p-3";
+    row.innerHTML = `
+      <div class="flex items-start gap-3">
+        <div class="flex-1 space-y-2">
+          <input type="text" data-deliverable-title value="${escapeHtml(title || "")}" placeholder="Deliverable name — e.g. Final 4K master" class="${inputClass}" />
+          <textarea data-deliverable-desc rows="2" placeholder="Short description of what this deliverable includes…" class="${inputClass}">${escapeHtml(desc || "")}</textarea>
+        </div>
+        <button type="button" data-remove-deliverable
+          class="focus-sage mt-0.5 h-[42px] shrink-0 rounded-xl border border-surface-line px-3 text-sm text-ink-muted transition hover:border-terracotta hover:text-terracotta">Remove</button>
+      </div>`;
+    row.querySelector("[data-remove-deliverable]").addEventListener("click", () => row.remove());
+    wrap.appendChild(row);
   }
 
   function productionFormHtml(pitch) {
@@ -489,6 +574,8 @@
           <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
           Add custom pre-production document
         </button>
+
+        ${deliverablesSection()}
 
         ${formFooter()}
       </form>`;
@@ -550,6 +637,8 @@
           </div>
         </div>
 
+        ${deliverablesSection()}
+
         ${formFooter()}
       </form>`;
   }
@@ -605,6 +694,11 @@
       const wrap = document.getElementById("bulk-delivery-wrap");
       toggle.addEventListener("change", () => wrap.classList.toggle("hidden", !toggle.checked));
     }
+
+    // Deliverables (shared by both modules): prefill when editing + wire add button.
+    document.getElementById("add-deliverable").addEventListener("click", () => appendDeliverable("", ""));
+    const existingDeliverables = (pitch && Array.isArray(pitch.deliverables)) ? pitch.deliverables : [];
+    existingDeliverables.forEach((d) => appendDeliverable(d.title, d.description));
   }
 
   // Collect form values, map to appState, persist, return to ledger.
@@ -621,7 +715,18 @@
       client: (fd.get("client") || "").toString().trim() || "—",
       value: fd.get("value") ? Number(fd.get("value")) : null,
       status: existing ? existing.status : "Draft",
+      // Preserve publish state across edits.
+      published: existing ? !!existing.published : false,
+      publishedAt: existing ? existing.publishedAt || null : null,
     };
+
+    // Itemised deliverables (shared by both modules): title + description.
+    pitch.deliverables = Array.from(form.querySelectorAll("#deliverables-list > div"))
+      .map((row) => ({
+        title: row.querySelector("[data-deliverable-title]").value.trim(),
+        description: row.querySelector("[data-deliverable-desc]").value.trim(),
+      }))
+      .filter((d) => d.title || d.description);
 
     if (type === "Production") {
       pitch.intro = (fd.get("intro") || "").toString();
@@ -791,6 +896,20 @@
       ? `<p class="max-w-2xl text-lg leading-relaxed text-ink/90">${escapeHtml(pitch.intro)}</p>`
       : "";
 
+    // Itemised deliverables (title + description) — collapses if none.
+    const deliverables = Array.isArray(pitch.deliverables) ? pitch.deliverables.filter((d) => has(d.title) || has(d.description)) : [];
+    const deliverablesClientHtml = deliverables.length
+      ? `<div class="space-y-3">${deliverables
+          .map(
+            (d) => `
+          <div class="rounded-xl border border-surface-line bg-surface-raised p-5">
+            <p class="font-display text-base font-bold text-ink">${escapeHtml(d.title || "Deliverable")}</p>
+            ${has(d.description) ? `<p class="mt-1.5 text-sm leading-relaxed text-ink-muted">${escapeHtml(d.description)}</p>` : ""}
+          </div>`
+          )
+          .join("")}</div>`
+      : "";
+
     const retainerBannerHtml = isRetainer
       ? `<div class="mb-10 rounded-xl border border-sage/40 bg-sage/10 px-5 py-4">
            <p class="text-sm leading-relaxed text-ink">${RETAINER_BANNER}</p>
@@ -822,6 +941,7 @@
 
         ${clientSection("Overview", introHtml)}
         ${clientSection(isRetainer ? "Retainer terms" : "Production details", factsHtml)}
+        ${clientSection("Deliverables", deliverablesClientHtml)}
         ${clientSection("Documents", docsHtml)}
 
         ${retainerFooterHtml}
@@ -1029,6 +1149,8 @@
       if (has(pitch.deliverableFrequency)) items.push(`Deliverables — ${pitch.deliverableFrequency}`);
       if (has(pitch.bulkDeliveryDate)) items.push(`Bulk delivery date — ${pitch.bulkDeliveryDate}`);
     }
+    // Itemised deliverables (shared by both modules).
+    (pitch.deliverables || []).filter((d) => has(d.title)).forEach((d) => items.push(d.title));
     return items;
   }
 
@@ -1069,6 +1191,60 @@
     });
   }
 
+  // =====================================================================
+  // PUBLISHED PITCHES LEDGER (live client links)
+  // =====================================================================
+  const publishedList = document.getElementById("published-list");
+  const publishedEmpty = document.getElementById("published-empty");
+
+  function renderPublishedList() {
+    if (!publishedList) return;
+    const published = appState.pitches.filter((p) => p.published);
+
+    if (!published.length) {
+      publishedList.innerHTML = "";
+      publishedEmpty.classList.remove("hidden");
+      return;
+    }
+    publishedEmpty.classList.add("hidden");
+
+    publishedList.innerHTML = published
+      .map((p) => {
+        const link = clientUrlFor(p);
+        return `
+        <div class="rounded-xl border border-surface-line bg-surface-raised p-5">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p class="font-display text-lg font-bold text-ink">${escapeHtml(p.title)}</p>
+              <p class="text-sm text-ink-muted">${escapeHtml(p.client)} · ${escapeHtml(p.type)} · ${formatValue(p.value)}</p>
+            </div>
+            <span class="inline-flex items-center gap-2 text-xs font-semibold text-sage"><span class="h-2 w-2 rounded-full bg-sage"></span>Published</span>
+          </div>
+          <div class="mt-4 flex flex-wrap items-center gap-2">
+            <input type="text" readonly value="${escapeHtml(link)}"
+              class="focus-sage min-w-0 flex-1 rounded-lg border border-surface-line bg-surface px-3 py-2 font-mono text-xs text-ink-muted" />
+            <button type="button" data-copy-link="${escapeHtml(link)}"
+              class="focus-sage rounded-lg bg-terracotta px-3.5 py-2 text-xs font-semibold text-ink transition hover:bg-terracotta-hover">Copy link</button>
+            <a href="${escapeHtml(link)}" target="_blank" rel="noopener"
+              class="focus-sage rounded-lg border border-surface-line px-3.5 py-2 text-xs font-semibold text-ink transition hover:border-sage hover:text-sage">Open ↗</a>
+          </div>
+        </div>`;
+      })
+      .join("");
+  }
+
+  if (publishedList) {
+    publishedList.addEventListener("click", async (e) => {
+      const copyBtn = e.target.closest("[data-copy-link]");
+      if (copyBtn) {
+        await copyText(copyBtn.getAttribute("data-copy-link"));
+        const prev = copyBtn.textContent;
+        copyBtn.textContent = "Copied!";
+        setTimeout(() => (copyBtn.textContent = prev), 1400);
+      }
+    });
+  }
+
   // --- Invoicing export modal ---
   const invoiceModal = document.getElementById("invoice-modal");
   const invoiceTitle = document.getElementById("invoice-modal-title");
@@ -1088,6 +1264,25 @@
       </div>`;
   }
 
+  // Itemised deliverables (title + description) shared rendering.
+  function itemisedDeliverablesBlock(pitch) {
+    const list = (pitch.deliverables || []).filter((d) => has(d.title) || has(d.description));
+    if (!list.length) return "";
+    return `
+      <div class="mt-4 space-y-2">
+        <p class="font-mono text-xs uppercase tracking-wide text-ink-muted">Itemised deliverables</p>
+        ${list
+          .map(
+            (d) => `
+          <div class="rounded-lg border border-surface-line bg-surface px-3 py-2">
+            <p class="text-sm font-semibold text-ink">${escapeHtml(d.title || "Deliverable")}</p>
+            ${has(d.description) ? `<p class="mt-0.5 text-xs text-ink-muted">${escapeHtml(d.description)}</p>` : ""}
+          </div>`
+          )
+          .join("")}
+      </div>`;
+  }
+
   // Deliverables / scope copy.
   function deliverablesHtml(pitch) {
     let rows = "";
@@ -1098,7 +1293,7 @@
             .map((d) => `<li class="flex items-center gap-2"><span class="h-1.5 w-1.5 rounded-full bg-sage"></span>${escapeHtml(d.label || d.fileName)}</li>`)
             .join("")}</ul>`
         : `<p class="mt-2 text-sm text-ink-muted">No specific document deliverables attached.</p>`;
-      return `<p class="text-sm text-ink-muted">Assets due for <span class="text-ink">${escapeHtml(pitch.title)}</span>:</p>${rows}`;
+      return `<p class="text-sm text-ink-muted">Assets due for <span class="text-ink">${escapeHtml(pitch.title)}</span>:</p>${rows}${itemisedDeliverablesBlock(pitch)}`;
     }
     // Retainer cycle mechanics
     const dur = has(pitch.blockDuration) ? pitch.blockDuration : "the contracted term";
@@ -1106,7 +1301,8 @@
     const shoot = has(pitch.shootSchedule) ? pitch.shootSchedule.toLowerCase() : "scheduled";
     return `
       <p class="text-sm leading-relaxed text-ink">Contracted for <span class="font-semibold">${escapeHtml(dur)}</span> with deliverables made <span class="font-semibold">${escapeHtml(freq)}</span>, on a <span class="font-semibold">${escapeHtml(shoot)}</span> shoot schedule.</p>
-      ${has(pitch.bulkDeliveryDate) ? `<p class="mt-2 text-sm text-ink-muted">Bulk delivery target date: <span class="text-ink">${escapeHtml(pitch.bulkDeliveryDate)}</span></p>` : ""}`;
+      ${has(pitch.bulkDeliveryDate) ? `<p class="mt-2 text-sm text-ink-muted">Bulk delivery target date: <span class="text-ink">${escapeHtml(pitch.bulkDeliveryDate)}</span></p>` : ""}
+      ${itemisedDeliverablesBlock(pitch)}`;
   }
 
   // Granular financial breakdown (internal — includes markups + margins).

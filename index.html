@@ -142,6 +142,11 @@
             <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             Approved Pitches
           </button>
+          <button data-tab="published"
+            class="nav-tab focus-sage flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-ink-muted transition hover:bg-surface hover:text-ink">
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07L11.5 4.5"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07L12.5 19.5"/></svg>
+            Published Pitches
+          </button>
           <button data-tab="settings"
             class="nav-tab focus-sage flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-ink-muted transition hover:bg-surface hover:text-ink">
             <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-2.82 1.17V21a2 2 0 11-4 0v-.09A1.65 1.65 0 007 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 14a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 7a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.36.14.65.42.79.79z"/></svg>
@@ -270,6 +275,20 @@
             </div>
             <div id="approved-empty" class="hidden rounded-xl border border-surface-line bg-surface-raised px-5 py-12 text-center">
               <p class="text-sm text-ink-muted">No approved pitches yet. Approved entries appear here for invoicing.</p>
+            </div>
+          </section>
+
+          <!-- Published Pitches panel -->
+          <section data-panel="published" class="panel hidden space-y-4">
+            <div>
+              <h3 class="font-display text-lg font-bold">Published Pitches</h3>
+              <p class="mt-0.5 text-sm text-ink-muted">Pitches with a live client portal link. Share the link with your client to view &amp; approve.</p>
+            </div>
+            <div id="published-list" class="space-y-3">
+              <!-- Published entries rendered dynamically by app.js -->
+            </div>
+            <div id="published-empty" class="hidden rounded-xl border border-surface-line bg-surface-raised px-5 py-12 text-center">
+              <p class="text-sm text-ink-muted">Nothing published yet. Open a pitch's ⋯ menu and choose “Publish” to generate a client link.</p>
             </div>
           </section>
 
