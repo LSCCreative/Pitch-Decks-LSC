@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LSC Creative — Creator Studio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Funnel+Sans:wght@400;500;600;700&family=Funnel+Display:wght@600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            surface: "#121214",
+            "surface-raised": "#1B1B1F",
+            "surface-line": "#2A2A30",
+            ink: "#F4F4F6",
+            "ink-muted": "#9A9AA2",
+            terracotta: "#C85A32",
+            "terracotta-hover": "#B14D2A",
+            sage: "#7A9A82",
+          },
+          fontFamily: {
+            sans: ["'Becondes'", "'Funnel Sans'", "system-ui", "sans-serif"],
+            display: ["'Delight Bold'", "'Funnel Display'", "'Funnel Sans'", "sans-serif"],
+            mono: ["'CS Felice Mono'", "ui-monospace", "monospace"],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    /* ---- Brand local fonts (lsc-studio/assets/) ---- */
+    @font-face {
+      font-family: "Delight Bold";
+      src: url("assets/DELIGHT-BOLD.woff2") format("woff2"),
+           url("assets/DELIGHT-BOLD.woff") format("woff"),
+           url("assets/DELIGHT-BOLD.otf") format("opentype");
+      font-weight: 700 800;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "Becondes";
+      src: url("assets/BECONDES.woff2") format("woff2"),
+           url("assets/BECONDES.woff") format("woff"),
+           url("assets/BECONDES.otf") format("opentype");
+      font-weight: 400 600;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "CS Felice Mono";
+      src: url("assets/CS-FELICE-MONO.woff2") format("woff2"),
+           url("assets/CS-FELICE-MONO.woff") format("woff"),
+           url("assets/CS-FELICE-MONO.otf") format("opentype");
+      font-weight: 400 500;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    html, body { background-color: #121214; color: #F4F4F6; }
+    /* Deep-gray glassmorphism surface used by form modules */
+    .glass-panel {
+      background: rgba(27, 27, 31, 0.72);
+      backdrop-filter: blur(14px) saturate(120%);
+      -webkit-backdrop-filter: blur(14px) saturate(120%);
+      border: 1px solid rgba(122, 154, 130, 0.12);
+    }
+    /* Sage focus ring on all interactive elements */
+    .focus-sage:focus-visible { outline: none; box-shadow: 0 0 0 2px #121214, 0 0 0 4px #7A9A82; }
+    .pin-input::-webkit-outer-spin-button,
+    .pin-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .pin-input { -moz-appearance: textfield; }
+  </style>
+</head>
+<body class="font-sans antialiased min-h-screen bg-surface text-ink">
+
+  <!-- ============ ENTRY GATE: PIN LOGIN ============ -->
+  <section id="login-view" class="min-h-screen w-full flex items-center justify-center px-4">
+    <div class="w-full max-w-sm rounded-2xl border border-surface-line bg-surface-raised p-8 shadow-2xl">
+      <div class="flex flex-col items-center text-center">
+        <!-- LSC mark -->
+        <div class="mb-6 flex h-12 w-12 items-center justify-center rounded-lg bg-ink text-surface">
+          <svg viewBox="0 0 24 24" class="h-7 w-7" fill="currentColor" aria-hidden="true">
+            <path d="M11 4a4 4 0 100 8 4 4 0 000-8zM3 20a8 8 0 0116 0H3z" opacity=".15"/>
+            <path d="M9 7.5a3.5 3.5 0 107 0 3.5 3.5 0 00-7 0zM16.5 9l5 2.5-5 2.5V9z"/>
+          </svg>
+        </div>
+        <h1 class="font-display text-2xl font-bold tracking-tight">LSC Creative</h1>
+        <p class="mt-1 text-sm text-ink-muted">Enter your 4-digit access PIN</p>
+      </div>
+
+      <!-- PIN cells -->
+      <form id="pin-form" class="mt-8" autocomplete="off" novalidate>
+        <div class="flex justify-center gap-3" id="pin-cells">
+          <input type="password" inputmode="numeric" maxlength="1" data-pin-index="0"
+            class="pin-input focus-sage h-14 w-12 rounded-xl border border-surface-line bg-surface text-center text-2xl font-semibold text-ink transition hover:border-sage focus:border-sage" />
+          <input type="password" inputmode="numeric" maxlength="1" data-pin-index="1"
+            class="pin-input focus-sage h-14 w-12 rounded-xl border border-surface-line bg-surface text-center text-2xl font-semibold text-ink transition hover:border-sage focus:border-sage" />
+          <input type="password" inputmode="numeric" maxlength="1" data-pin-index="2"
+            class="pin-input focus-sage h-14 w-12 rounded-xl border border-surface-line bg-surface text-center text-2xl font-semibold text-ink transition hover:border-sage focus:border-sage" />
+          <input type="password" inputmode="numeric" maxlength="1" data-pin-index="3"
+            class="pin-input focus-sage h-14 w-12 rounded-xl border border-surface-line bg-surface text-center text-2xl font-semibold text-ink transition hover:border-sage focus:border-sage" />
+        </div>
+
+        <p id="pin-error" class="mt-4 hidden text-center text-sm text-terracotta">Incorrect PIN. Please try again.</p>
+
+        <button type="submit"
+          class="focus-sage mt-6 w-full rounded-xl bg-terracotta px-4 py-3 text-sm font-semibold text-ink transition hover:bg-terracotta-hover active:scale-[.99]">
+          Unlock Studio
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ CREATOR LAYOUT (hidden until PIN ok) ============ -->
+  <div id="creator-view" class="hidden min-h-screen w-full">
+    <div class="flex min-h-screen">
+
+      <!-- LEFT: narrow dark nav panel -->
+      <aside class="flex w-60 shrink-0 flex-col border-r border-surface-line bg-surface-raised">
+        <div class="flex items-center gap-2 px-5 py-5">
+          <div class="flex h-8 w-8 items-center justify-center rounded-md bg-ink text-surface">
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="currentColor" aria-hidden="true">
+              <path d="M9 7.5a3.5 3.5 0 107 0 3.5 3.5 0 00-7 0zM16.5 9l5 2.5-5 2.5V9z"/>
+            </svg>
+          </div>
+          <span class="font-display text-base font-bold tracking-tight">LSC Creative</span>
+        </div>
+
+        <nav class="mt-2 flex flex-1 flex-col gap-1 px-3" id="nav-tabs">
+          <button data-tab="dashboard"
+            class="nav-tab focus-sage flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-ink-muted transition hover:bg-surface hover:text-ink">
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 13h6V4H4v9zM14 20h6v-9h-6v9zM4 20h6v-4H4v4zM14 9h6V4h-6v5z"/></svg>
+            Dashboard
+          </button>
+          <button data-tab="approved"
+            class="nav-tab focus-sage flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-ink-muted transition hover:bg-surface hover:text-ink">
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Approved Pitches
+          </button>
+          <button data-tab="settings"
+            class="nav-tab focus-sage flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-ink-muted transition hover:bg-surface hover:text-ink">
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-2.82 1.17V21a2 2 0 11-4 0v-.09A1.65 1.65 0 007 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 14a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 7a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.36.14.65.42.79.79z"/></svg>
+            Settings
+          </button>
+        </nav>
+
+        <!-- Pinned settings gear at bottom -->
+        <div class="border-t border-surface-line p-3">
+          <button data-tab="settings"
+            class="nav-tab focus-sage flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-ink-muted transition hover:bg-surface hover:text-ink">
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-2.82 1.17V21a2 2 0 11-4 0v-.09A1.65 1.65 0 007 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 14a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 7a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9c.36.14.65.42.79.79z"/></svg>
+            Settings
+          </button>
+        </div>
+      </aside>
+
+      <!-- RIGHT: workspace canvas -->
+      <main class="flex-1 overflow-y-auto">
+        <header class="flex items-center justify-between border-b border-surface-line px-8 py-5">
+          <div>
+            <h2 id="view-title" class="font-display text-2xl font-bold tracking-tight">Dashboard</h2>
+            <p id="view-subtitle" class="mt-0.5 text-sm text-ink-muted">Your documentary pipeline at a glance</p>
+          </div>
+          <button id="logout-btn"
+            class="focus-sage rounded-lg border border-surface-line px-4 py-2 text-sm font-medium text-ink-muted transition hover:border-sage hover:text-ink">
+            Lock
+          </button>
+        </header>
+
+        <div class="p-8">
+          <!-- Dashboard panel -->
+          <section data-panel="dashboard" class="panel space-y-6">
+
+            <!-- Dashboard home (table view) -->
+            <div id="dashboard-home" class="space-y-6">
+              <!-- Action header -->
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 class="font-display text-lg font-bold">Pitch Tracker</h3>
+                  <p class="mt-0.5 text-sm text-ink-muted">Create and manage your production &amp; retainer pitch decks.</p>
+                </div>
+                <div class="flex flex-wrap gap-3">
+                  <button id="create-production-btn" data-create-type="Production"
+                    class="focus-sage rounded-lg bg-terracotta px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-terracotta-hover active:scale-[.99]">
+                    Create Production Pitch Deck
+                  </button>
+                  <button id="create-retainer-btn" data-create-type="Retainer"
+                    class="focus-sage rounded-lg bg-terracotta px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-terracotta-hover active:scale-[.99]">
+                    Create Retainer Pitch Deck
+                  </button>
+                </div>
+              </div>
+
+              <!-- Data tracking matrix -->
+              <div class="overflow-visible rounded-xl border border-surface-line bg-surface-raised">
+                <div class="overflow-x-auto">
+                  <table class="w-full min-w-[760px] text-left text-sm">
+                    <thead>
+                      <tr class="border-b border-surface-line text-xs uppercase tracking-wide text-ink-muted">
+                        <th class="px-5 py-3 font-semibold">Title</th>
+                        <th class="px-5 py-3 font-semibold">Client</th>
+                        <th class="px-5 py-3 font-semibold">Type</th>
+                        <th class="px-5 py-3 font-semibold">Value</th>
+                        <th class="px-5 py-3 font-semibold">Status</th>
+                        <th class="px-5 py-3 text-right font-semibold">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="pitch-table-body">
+                      <!-- Rows rendered dynamically by app.js -->
+                    </tbody>
+                  </table>
+                </div>
+                <!-- Empty state -->
+                <div id="pitch-empty-state" class="hidden px-5 py-12 text-center">
+                  <p class="text-sm text-ink-muted">No pitches yet. Create your first pitch deck to get started.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Create workflow mount point (cleared canvas for upcoming forms) -->
+            <div id="dashboard-create" class="hidden">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 id="create-view-title" class="font-display text-xl font-bold">New Pitch Deck</h3>
+                  <p class="mt-0.5 text-sm text-ink-muted">Form workflow loading next…</p>
+                </div>
+                <button id="create-back-btn"
+                  class="focus-sage rounded-lg border border-surface-line px-4 py-2 text-sm font-medium text-ink-muted transition hover:border-sage hover:text-ink">
+                  ← Back to tracker
+                </button>
+              </div>
+              <!-- Form module injected here by app.js (renderCreateForm) -->
+              <div id="create-canvas" class="mt-6"></div>
+            </div>
+
+          </section>
+
+          <!-- Approved Pitches panel -->
+          <section data-panel="approved" class="panel hidden space-y-4">
+            <div>
+              <h3 class="font-display text-lg font-bold">Approved Ledger</h3>
+              <p class="mt-0.5 text-sm text-ink-muted">Greenlit pitches ready for invoicing. Select an entry to export.</p>
+            </div>
+            <div id="approved-list" class="space-y-3">
+              <!-- Approved entries rendered dynamically by app.js -->
+            </div>
+            <div id="approved-empty" class="hidden rounded-xl border border-surface-line bg-surface-raised px-5 py-12 text-center">
+              <p class="text-sm text-ink-muted">No approved pitches yet. Approved entries appear here for invoicing.</p>
+            </div>
+          </section>
+
+          <!-- Settings panel -->
+          <section data-panel="settings" class="panel hidden space-y-6">
+            <div class="max-w-lg rounded-xl border border-surface-line bg-surface-raised p-6">
+              <h3 class="font-display text-lg font-bold">Profile</h3>
+              <label class="mt-4 block text-sm text-ink-muted">Display name</label>
+              <input type="text" value="LSC Creative"
+                class="focus-sage mt-1.5 w-full rounded-lg border border-surface-line bg-surface px-3 py-2.5 text-sm text-ink transition hover:border-sage focus:border-sage" />
+              <label class="mt-4 block text-sm text-ink-muted">Notification email</label>
+              <input type="email" placeholder="you@studio.com"
+                class="focus-sage mt-1.5 w-full rounded-lg border border-surface-line bg-surface px-3 py-2.5 text-sm text-ink transition hover:border-sage focus:border-sage" />
+              <button class="focus-sage mt-6 rounded-lg bg-terracotta px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-terracotta-hover">Save changes</button>
+            </div>
+          </section>
+        </div>
+      </main>
+
+    </div>
+  </div>
+
+  <!-- ============ CLIENT-FACING PITCH VIEW (isolated, no auth) ============ -->
+  <main id="client-view" class="hidden min-h-screen w-full">
+    <!-- Rendered dynamically by app.js renderClientView() -->
+  </main>
+
+  <!-- ============ INVOICING EXPORT MODAL ============ -->
+  <div id="invoice-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 sm:p-8">
+    <div data-invoice-backdrop class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+    <div class="glass-panel relative flex h-full max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl shadow-2xl">
+      <header class="flex items-start justify-between gap-4 border-b border-surface-line px-6 py-5">
+        <div>
+          <p class="font-mono text-xs uppercase tracking-[0.2em] text-sage">Invoicing Export</p>
+          <h3 id="invoice-modal-title" class="mt-1 font-display text-xl font-bold text-ink">Pitch</h3>
+          <p id="invoice-modal-sub" class="mt-0.5 text-sm text-ink-muted"></p>
+        </div>
+        <button id="invoice-modal-close"
+          class="focus-sage inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-muted transition hover:bg-surface-line hover:text-ink" aria-label="Close">
+          <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </header>
+
+      <div class="flex-1 overflow-y-auto px-6 py-5">
+        <a id="invoice-client-link" href="#" target="_blank" rel="noopener"
+          class="focus-sage mb-5 inline-flex items-center gap-2 rounded-xl border border-surface-line px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-sage hover:text-sage">
+          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+          View client-facing page
+        </a>
+
+        <!-- Accordions injected by app.js renderInvoiceAccordions() -->
+        <div id="invoice-accordions" class="space-y-3"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PDF DOCUMENT MODAL VIEWER ============ -->
+  <div id="pdf-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 sm:p-8">
+    <div data-modal-backdrop class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+    <div class="glass-panel relative flex h-full max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl shadow-2xl">
+      <header class="flex items-center justify-between gap-4 border-b border-surface-line px-5 py-4">
+        <h3 id="pdf-modal-title" class="font-display text-base font-bold text-ink">Document</h3>
+        <div class="flex items-center gap-2">
+          <a id="pdf-modal-download" href="#" download
+            class="focus-sage inline-flex items-center gap-2 rounded-lg bg-terracotta px-3.5 py-2 text-xs font-semibold text-ink transition hover:bg-terracotta-hover">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>
+            Download
+          </a>
+          <button id="pdf-modal-close"
+            class="focus-sage inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted transition hover:bg-surface-line hover:text-ink" aria-label="Close">
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </header>
+      <div id="pdf-modal-body" class="flex-1 overflow-hidden bg-surface">
+        <!-- iframe / fallback injected here -->
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
