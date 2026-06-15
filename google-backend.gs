@@ -12,10 +12,10 @@
 
 // ===== Configuration =========================================================
 var CONFIG = {
-  PITCHES_FOLDER_ID: "REPLACE_WITH_DRIVE_FOLDER_ID", // Drive folder holding *.json pitches
-  CONFIG_SHEET_ID: "REPLACE_WITH_SHEET_ID",          // Spreadsheet holding dropdown values
+  PITCHES_FOLDER_ID: "https://drive.google.com/drive/u/0/folders/1HPsoa3Kg3uII7QzhybnYBSx1kLxOmTbq", // Drive folder holding *.json pitches
+  CONFIG_SHEET_ID: "https://docs.google.com/spreadsheets/d/1wIGdx1jjmynyCmozFZ3W7Ludn00FvWxsTSypsbyk2zQ/edit?gid=0#gid=0",          // Spreadsheet holding dropdown values
   CONFIG_SHEET_TAB: "Config",                         // Tab name with Services / Deliverables columns
-  NOTIFY_EMAIL: "studio@lsccreative.com",             // Internal recipient for status alerts
+  NOTIFY_EMAIL: "lachlan@lsccreative.com",             // Internal recipient for status alerts
 };
 
 // ===== Helpers ===============================================================
